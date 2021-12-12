@@ -1,32 +1,70 @@
 #!/usr/bin/python3
-# library to get arguments
-import sys
+from random import randint
 
 
-# fn unpack number factorial
-def fc():
+def gcd(a, b):
+    """ Returns the greatest common divisor of the two numbers
     """
-    function fc to search file to convert number and format n=p*q
+    while b:
+        a, b = b, a % b
+    return a
+
+
+def _pollard_brent_func(c, n, x):
+    """ Return f(x) = (x^2 + c) % n
+        Assume c < n
     """
-    try:
-        revfile = sys.argv[1]
-        with open(revfile) as f:
-            for revnumber in f:
-                revnumber = int(revnumber)
-                if revnumber % 2 == 0:
-                        print("{}={}*{}".format(revnumber, revnumber // 2, 2))
-                        continue
-                i = 3
-                while i < revnumber // 2:
-                    if revnumber % i == 0:
-                        print("{}={}*{}".format(revnumber, revnumber // i, i))
-                        break
-                    i = i + 2
-                if i == (revnumber // 2) + 1:
-                    print("{}={}*{}".format(revnumber, revnumber, 1))
-    except (IndexError):
-        pass
+    y = (x ** 2) % n + c
+    if y >= n:
+        y -= n
+
+    assert 0 <= y < n
+    return y
 
 
-# autostart
-fc()
+def brent_factorise(n, iterations=None):
+    """ Perform Brent's variant of Pollard's rho factorization algorithm to
+        attempt to find a non-trivial factor of the given number number, n.
+        If iterations > 0, return None if no factors are found within its range
+    """
+    y, c, m = (randint(1, n - 1) for _ in range(3))
+    r, q, g = 1, 1, 1
+    i = 0
+    while g == 1:
+        x = y
+        for _ in range(r):
+            y = _pollard_brent_func(c, n, y)
+        k = 0
+        while k < r and g == 1:
+            ys = y
+            for _ in range(min(m, r - k)):
+                y = _pollard_brent_func(c, n, y)
+                q = (q * abs(x - y)) %  n
+            g = gcd(q, n)
+            k += m
+        r *= 2
+        if iterations:
+            i += 1
+            if i == iterations:
+                return None
+
+    if g == n:
+        while True:
+            ys = _pollard_brent_func(c, n, ys)
+            g = gcd(abs(x - ys), n)
+            if g > 1:
+                break
+    return g
+
+
+if __name__ == '__main__':
+    from sys import argv
+
+    if len(argv) != 2:
+        exit(1)
+
+    with open(argv[1], "r") as f:
+        for i in f:
+            n = int(i[:-1])
+            res = brent_factorise(n)
+            print("{}={}*{}".format(n, n // res, res))
